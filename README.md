@@ -119,3 +119,76 @@ ReactDOM.render(
       <App />
     </Provider>
 ```
+
+## createAsyncThunk 概要
+
+非同期処理を扱えるようになるもの。  
+`dispatch` を使って呼び出すことができる。
+
+インポート
+
+```js
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import axios from "axios";
+```
+
+- `axios`: API にアクセスするために必要なもの。
+- 非同期処理は、slice 処理の外に書く決まりがある。
+
+記述例
+
+```js
+const apiUrl = "https://jsonplaceholder.typicode.com/users";
+
+export const fetchAsyncGet = createAsyncThunk("fetch/get", async () => {
+  const res = await axios.get(apiUrl);
+  return res.data;
+});
+```
+
+- 第 1 引数: action 名の定義。`slice名/メソッド名` という命名が一般的。
+- 第 2 引数: async で関数の定義。
+
+`extraReducers`: createSlice の属性で、API の処理が終わった後の後処理を書いておくもの。createAsyncThunk を使った場合に併せて記述する。
+
+記述例
+
+```js
+const fetchSlice = createSlice({
+  name: "fetch",
+  initialState: { users: [] },
+  reducers: {},
+  extraReducers: (builder) => {
+    builder.addCase(fetchAsyncGet.fulfilled, (state, action) => {
+      return {
+        ...state,
+        users: action.payload,
+      };
+    });
+  },
+});
+```
+
+- `fulfilled`: API 処理が成功した場合に起こす処理。(他には、`pending: 処理中`、`rejected: 失敗` がある)
+- `...state`: state をスプレッド構文で記述することで、中身を分解させる。(今回は、users を取り出せるようにするため)
+- `action.payload`: 今回の場合、fetchAsyncGet の返り値が渡されている。
+
+コンポーネントから、取ってきた API を参照できるようにするため、エクスポートする
+
+```js
+export const selectUsers = (state) => state.fetch.users;
+```
+
+store への slice 追加を忘れないようにする
+
+```js
+...
+import fetchReducer from '../features/fetch/fetchSlice';
+
+export const store = configureStore({
+  reducer: {
+    ...
+    fetch: fetchReducer,
+  },
+});
+```
